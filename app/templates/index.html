@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Copilot - Automatisation pour Cabinets CAC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .hero-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 60px 0;
+            margin-bottom: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .card {
+            margin-bottom: 20px;
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+        .card:hover { transform: translateY(-5px); }
+
+        .doc-group-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #764ba2;
+            padding: 6px 4px 2px;
+            border-bottom: 2px solid #e0d8f5;
+            margin-bottom: 10px;
+        }
+
+        .doc-card {
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 16px 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+            height: 100%;
+        }
+        .doc-card:hover {
+            border-color: #667eea;
+            background: #f0f0ff;
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(102,126,234,0.3);
+        }
+        .doc-card.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #667eea22, #764ba222);
+            box-shadow: 0 4px 12px rgba(102,126,234,0.4);
+        }
+        .doc-card .doc-icon { font-size: 2.2rem; margin-bottom: 8px; }
+        .doc-card h6 { font-weight: 700; color: #333; margin-bottom: 4px; font-size: 0.82rem; }
+        .doc-card p  { font-size: 0.72rem; color: #666; margin: 0; }
+        .doc-card.selected h6 { color: #667eea; }
+        .selected-badge { display: none; position: absolute; top: 8px; right: 8px; }
+        .doc-card.selected .selected-badge { display: block; }
+        .doc-card-wrapper { position: relative; }
+
+        .btn-custom {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; border: none; border-radius: 5px;
+            padding: 10px 20px; font-weight: 600; transition: all 0.3s;
+        }
+        .btn-custom:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); color: white; }
+        .btn-custom:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .btn-generate {
+            background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+            color: white; border: none; border-radius: 8px;
+            padding: 12px 35px; font-weight: 700; font-size: 1.1rem; transition: all 0.3s;
+        }
+        .btn-generate:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(40,167,69,0.4); color: white; }
+        .btn-generate:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .file-upload-area {
+            border: 2px dashed #667eea; border-radius: 10px; padding: 40px;
+            text-align: center; background-color: #f8f9fa; cursor: pointer; transition: all 0.3s;
+        }
+        .file-upload-area:hover { background-color: #e9ecef; border-color: #764ba2; }
+        .file-upload-area.dragover { background-color: #e0e7ff; border-color: #4f46e5; }
+        .file-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px; background-color: white; border-radius: 5px;
+            margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .file-item .remove-file { color: #dc3545; cursor: pointer; }
+        .loading-spinner { display: none; text-align: center; margin: 20px 0; }
+        .spinner-border { width: 3rem; height: 3rem; border-width: 0.3em; }
+        .results-section {
+            margin-top: 30px; background-color: white; padding: 20px;
+            border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .risk-item {
+            padding: 10px; margin-bottom: 10px;
+            border-left: 4px solid #dc3545; background-color: #fff5f5; border-radius: 5px;
+        }
+        .commentaire-item {
+            padding: 10px; margin-bottom: 10px;
+            border-left: 4px solid #ffc107; background-color: #fffef5; border-radius: 5px;
+        }
+        .stepper { display: flex; justify-content: center; align-items: center; margin-bottom: 30px; gap: 0; }
+        .step { display: flex; flex-direction: column; align-items: center; position: relative; }
+        .step-circle {
+            width: 40px; height: 40px; border-radius: 50%; background: #e9ecef; color: #aaa;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 1rem; border: 2px solid #dee2e6; z-index: 1; transition: all 0.3s;
+        }
+        .step.active .step-circle { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-color: #667eea; }
+        .step.done   .step-circle { background: #28a745; color: white; border-color: #28a745; }
+        .step-label { font-size: 0.75rem; color: #aaa; margin-top: 5px; text-align: center; max-width: 80px; }
+        .step.active .step-label { color: #667eea; font-weight: 600; }
+        .step.done   .step-label { color: #28a745; }
+        .step-line { width: 60px; height: 2px; background: #dee2e6; margin-bottom: 20px; transition: all 0.3s; }
+        .step-line.done { background: #28a745; }
+        .section-step { display: none; }
+        .section-step.active { display: block; }
+        .alert-selection {
+            background: linear-gradient(135deg, #fff3cd, #ffeeba);
+            border: 1px solid #ffc107; border-radius: 8px;
+            padding: 12px 18px; color: #856404; font-weight: 600;
+        }
+        .error-toast {
+            position: fixed; bottom: 20px; right: 20px; z-index: 9999;
+            background: #dc3545; color: white; padding: 15px 20px;
+            border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            display: none; max-width: 350px;
+        }
+
+        /* ═══ Styles pour le choix de format ═══ */
+        .format-card {
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 20px 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+            height: 100%;
+        }
+        .format-card:hover {
+            border-color: #667eea;
+            background: #f0f0ff;
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(102,126,234,0.2);
+        }
+        .format-card.selected {
+            border-color: #28a745;
+            background: linear-gradient(135deg, #28a74522, #21883822);
+            box-shadow: 0 4px 12px rgba(40,167,69,0.3);
+        }
+        .format-card .format-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        .format-card.selected .format-icon {
+            color: #28a745;
+        }
+        .format-card h6 {
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 4px;
+            font-size: 0.9rem;
+        }
+        .format-card p {
+            font-size: 0.75rem;
+            color: #666;
+            margin: 0;
+        }
+        .format-card.selected h6 {
+            color: #28a745;
+        }
+        .format-badge {
+            display: none;
+            position: absolute;
+            top: 8px;
+            right: 8px;
+        }
+        .format-card.selected .format-badge {
+            display: block;
+        }
+        .format-card-wrapper {
+            position: relative;
+        }
+        .format-section-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .format-alert {
+            background: linear-gradient(135deg, #fff3cd, #ffeeba);
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 12px 18px;
+            color: #856404;
+            font-weight: 600;
+            display: none;
+        }
+    </style>
+<base target="_blank">
+<base target="_blank">
+</head>
+<body>
+<div class="container py-4">
+
+
+    <!-- Stepper -->
+    <div class="stepper" id="stepper">
+        <div class="step active" id="step1">
+            <div class="step-circle">1</div>
+            <div class="step-label">Choisir le document</div>
+        </div>
+        <div class="step-line" id="line1"></div>
+        <div class="step" id="step2">
+            <div class="step-circle">2</div>
+            <div class="step-label">Uploader les fichiers</div>
+        </div>
+        <div class="step-line" id="line2"></div>
+        <div class="step" id="step3">
+            <div class="step-circle">3</div>
+            <div class="step-label">Format & Génération</div>
+        </div>
+    </div>
+
+    <!-- ======= ÉTAPE 1 : Choix du document ======= -->
+    <div class="section-step active" id="section-step1">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="card-title mb-1">
+                    <i class="fas fa-file-alt me-2 text-primary"></i>
+                    Étape 1 — Quel document voulez-vous générer ?
+                </h4>
+                <p class="text-muted mb-4">Cliquez sur le document souhaité, puis cliquez sur "Continuer".</p>
+
+                <!-- ══ SEULEMENT 8 DOCUMENTS ══ -->
+                <div class="row g-3 mb-4" id="doc-cards-container">
+
+                    <!-- 1. FICHE SIGNALÉTIQUE -->
+                    <div class="col-6 col-md-4 col-lg-3">
+                        <div class="doc-card-wrapper">
+                            <div class="doc-card" data-value="fiche_signaletique">
+                                <span class="selected-badge"><i class="fas fa-check-circle text-primary fa-lg"></i></span>
+                                <div class="doc-icon text-primary"><i class="fas fa-id-card"></i></div>
+                                <h6>Fiche signalétique</h6>
+                                <p>Informations générales de la société</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. ACCEPTATION DE LA MISSION -->
+                    <div class="col-6 col-md-4 col-lg-3">
+                        <div class="doc-card-wrapper">
+                            <div class="doc-card" data-value="acceptation_mission">
+                                <span class="selected-badge"><i class="fas fa-check-circle text-primary fa-lg"></i></span>
+                                <div class="doc-icon text-success"><i class="fas fa-file-signature"></i></div>
+                                <h6>Acceptation de la mission</h6>
+                                <p>Analyse préalable et validation du mandat</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. MAINTIEN DE LA MISSION -->
+                    <div class="col-6 col-md-4 col-lg-3">
+                        <div class="doc-card-wrapper">
+                            <div class="doc-card" data-value="maintien_mission">
+                                <span class="selected-badge"><i class="fas fa-check-circle text-primary fa-lg"></i></span>
+                                <div class="doc-icon text-warning"><i class="fas fa-envelope-open-text"></i></div>
+                                <h6>Maintien de la mission</h6>
+                                <p>Évaluation de l'indépendance et des risques</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. QUESTIONNAIRE PRISE DE CONNAISSANCE -->
+                    <div class="col-6 col-md-4 col-lg-3">
+                        <div class="doc-card-wrapper">
+                            <div class="doc-card" data-value="questionnaire_pri">
+                                <span class="selected-badge"><i class="fas fa-check-circle text-primary fa-lg"></i></span>
+                                <div class="doc-icon" style="color:#0d6efd"><i class="fas fa-search"></i></div>
+                                <h6>Prise de connaissance</h6>
+                                <p>Connaissance entreprise &amp; risques clés</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 5. QUESTIONNAIRE INVENTAIRE PHYSIQUE -->
+                    <div class="col-6 col-md-4 col-lg-3">
+                        <div class="doc-card-wrapper">
+                            <div class="doc-card" data-value="questionnaire_inventaire">
+                                <span class="selected-badge"><i class="fas fa-check-circle text-primary fa-lg"></i></span>
+                                <div class="doc-icon" style="color:#198754"><i class="fas fa-boxes"></i></div>
+                                <h6>Inventaire physique</h6>
+                                <p>Comptage, réconciliation &amp; évaluation stocks</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 6. QUESTIONNAIRE VÉRIFICATION SPÉCIFIQUE -->
+                    <div class="col-6 col-md-4 col-lg-3">
+                        <div class="doc-card-wrapper">
+                            <div class="doc-card" data-value="questionnaire_verification">
+                                <span class="selected-badge"><i class="fas fa-check-circle text-primary fa-lg"></i></span>
+                                <div class="doc-icon" style="color:#fd7e14"><i class="fas fa-microscope"></i></div>
+                                <h6>Vérification spécifique</h6>
+                                <p>Contrôles sectoriels &amp; points de vigilance</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 7. QUESTIONNAIRE ÉVÉNEMENTS POST-CLÔTURE -->
+                    <div class="col-6 col-md-4 col-lg-3">
+                        <div class="doc-card-wrapper">
+                            <div class="doc-card" data-value="questionnaire_evenement">
+                                <span class="selected-badge"><i class="fas fa-check-circle text-primary fa-lg"></i></span>
+                                <div class="doc-icon" style="color:#dc3545"><i class="fas fa-calendar-exclamation"></i></div>
+                                <h6>Événements post-clôture</h6>
+                                <p>Événements significatifs après clôture</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 8. QUESTIONNAIRE FIN DE MISSION -->
+                    <div class="col-6 col-md-4 col-lg-3">
+                        <div class="doc-card-wrapper">
+                            <div class="doc-card" data-value="questionnaire_fin">
+                                <span class="selected-badge"><i class="fas fa-check-circle text-primary fa-lg"></i></span>
+                                <div class="doc-icon" style="color:#20c997"><i class="fas fa-flag-checkered"></i></div>
+                                <h6>Fin de mission</h6>
+                                <p>Bilan travaux, conclusion &amp; recommandations</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="alert-selection mt-4" id="alert-no-selection" style="display:none;">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Veuillez sélectionner un type de document avant de continuer.
+                </div>
+
+                <div class="mt-4 p-3 rounded" id="selection-recap"
+                     style="display:none; background:#f0f0ff; border:1px solid #667eea;">
+                    <i class="fas fa-check-circle text-primary me-2"></i>
+                    Document sélectionné : <strong id="selected-doc-name"></strong>
+                </div>
+
+                <div class="text-end mt-4">
+                    <button class="btn btn-custom btn-lg" id="btn-next-step1">
+                        Continuer <i class="fas fa-arrow-right ms-2"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======= ÉTAPE 2 : Upload des fichiers ======= -->
+    <div class="section-step" id="section-step2">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="card-title mb-1">
+                    <i class="fas fa-upload me-2 text-primary"></i>
+                    Étape 2 — Uploadez vos documents
+                </h4>
+                <p class="text-muted mb-1">
+                    Document à générer :
+                    <strong class="text-primary" id="recap-doc-step2"></strong>
+                </p>
+                <p class="text-muted mb-3">Glissez-déposez vos fichiers ou cliquez pour sélectionner.</p>
+
+                <div class="file-upload-area" id="drop-area">
+                    <input type="file" id="file-input" multiple
+                           accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls,.txt" style="display:none;">
+                    <i class="fas fa-cloud-upload-alt fa-3x mb-3 text-primary"></i>
+                    <h5>Glissez-déposez vos fichiers ici</h5>
+                    <p class="text-muted">ou cliquez pour sélectionner</p>
+                    <p class="text-muted small">Formats acceptés : PDF, PNG, JPG, Excel</p>
+                </div>
+
+                <div id="file-list" class="mt-3"></div>
+
+                <div class="loading-spinner" id="loading-spinner">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Traitement en cours...</span>
+                    </div>
+                    <p class="mt-2 fw-bold">Traitement en cours, veuillez patienter...</p>
+                </div>
+
+                <div class="d-flex justify-content-between mt-4">
+                    <button class="btn btn-outline-secondary" id="btn-back-step2">
+                        <i class="fas fa-arrow-left me-2"></i>Retour
+                    </button>
+                    <button class="btn btn-custom btn-lg" id="process-btn" disabled>
+                        <i class="fas fa-cog me-2"></i>Traiter les documents
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======= ÉTAPE 3 : Résultats + Choix format + Génération ======= -->
+    <div class="section-step" id="section-step3">
+
+        <!-- ═══ Choix du format de sortie (PDF / Word uniquement) ═══ -->
+        <div class="card border-primary mb-4">
+            <div class="card-body">
+                <h5 class="card-title mb-3">
+                    <i class="fas fa-file-export me-2 text-primary"></i>
+                    Étape 3 — Choisissez le format de sortie
+                </h5>
+                <p class="text-muted mb-3">
+                    Document : <strong class="text-primary" id="recap-doc-step3"></strong>
+                </p>
+
+                <div class="format-section-title">
+                    <i class="fas fa-download me-2"></i>Format de génération
+                </div>
+
+                <div class="row g-3 mb-3 justify-content-center" id="format-cards-container">
+                    <!-- PDF -->
+                    <div class="col-6 col-md-4">
+                        <div class="format-card-wrapper">
+                            <div class="format-card selected" data-format="pdf">
+                                <span class="format-badge"><i class="fas fa-check-circle text-success fa-lg"></i></span>
+                                <div class="format-icon text-danger"><i class="fas fa-file-pdf"></i></div>
+                                <h6>PDF</h6>
+                                <p>Document officiel<br>Archivage & signature</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Word -->
+                    <div class="col-6 col-md-4">
+                        <div class="format-card-wrapper">
+                            <div class="format-card" data-format="word">
+                                <span class="format-badge"><i class="fas fa-check-circle text-success fa-lg"></i></span>
+                                <div class="format-icon text-primary"><i class="fas fa-file-word"></i></div>
+                                <h6>Word</h6>
+                                <p>Document éditable<br>Modification facile</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="format-alert mt-3" id="alert-no-format">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Veuillez sélectionner un format avant de générer.
+                </div>
+
+                <div class="text-center mt-4">
+                    <button class="btn btn-generate" id="generate-doc-btn">
+                        <i class="fas fa-magic me-2"></i>
+                        Générer &amp; Télécharger
+                    </button>
+                </div>
+                <div class="text-center mt-3">
+                    <button class="btn btn-outline-secondary btn-sm" id="btn-back-step3">
+                        <i class="fas fa-arrow-left me-2"></i>Retour
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="results-section" id="results-section">
+            <h4><i class="fas fa-check-circle me-2 text-success"></i>Données extraites</h4>
+            <hr>
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Raison sociale :</strong> <span id="raison_sociale"></span></p>
+                    <p><strong>ICE :</strong> <span id="ice"></span></p>
+                    <p><strong>RC :</strong> <span id="rc"></span></p>
+                    <p><strong>IF :</strong> <span id="if_val"></span></p>
+                    <p><strong>Activité :</strong> <span id="activite"></span></p>
+                    <p><strong>Forme juridique :</strong> <span id="forme_juridique"></span></p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Capital :</strong> <span id="capital"></span> MAD</p>
+                    <p><strong>Adresse :</strong> <span id="adresse"></span></p>
+                    <p><strong>Exercice :</strong> <span id="exercice"></span></p>
+                    <p><strong>Secteur :</strong> <span id="secteur"></span></p>
+                    <p><strong>Dirigeants :</strong> <span id="dirigeants"></span></p>
+                    <p><strong>Banques :</strong> <span id="banques"></span></p>
+                </div>
+            </div>
+
+            <hr>
+            <h5><i class="fas fa-file-alt me-2"></i>Résumé automatique</h5>
+            <p id="resume" class="mt-2 p-3 bg-light rounded"></p>
+        </div>
+    </div>
+
+</div>
+
+<!-- Modal téléchargement -->
+<div class="modal fade" id="downloadModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title">
+                    <i class="fas fa-check-circle text-success me-2"></i>Document généré !
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <i class="fas fa-file-download fa-4x text-success mb-3"></i>
+                <p class="fw-bold" id="download-message"></p>
+                <p class="text-muted small" id="download-format-info"></p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fermer</button>
+                <a id="download-link" class="btn btn-custom" href="#" download>
+                    <i class="fas fa-download me-2"></i>Télécharger
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast erreur -->
+<div class="error-toast" id="error-toast">
+    <i class="fas fa-exclamation-circle me-2"></i>
+    <span id="error-toast-msg"></span>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+
+/* ============================================================
+   VARIABLES GLOBALES
+============================================================ */
+let files = [];
+let extractedData = null;
+let selectedDocType = null;
+let selectedFormat = "pdf";  // format par défaut
+
+const DOC_LABELS = {
+    fiche_signaletique:         'Fiche signalétique',
+    acceptation_mission:        'Acceptation de la mission',
+    maintien_mission:           'Maintien de la mission',
+    questionnaire_pri:            'Questionnaire — Prise de connaissance',
+    questionnaire_inventaire:     'Questionnaire — Inventaire physique',
+    questionnaire_verification:   'Questionnaire — Vérification spécifique',
+    questionnaire_evenement:      'Questionnaire — Événements post-clôture',
+    questionnaire_fin:            'Questionnaire — Fin de mission',
+};
+
+const FORMAT_LABELS = {
+    pdf:   'PDF',
+    word:  'Word (.docx)',
+};
+
+/* ============================================================
+   UTILITAIRES
+============================================================ */
+function showError(msg) {
+    const toast = document.getElementById('error-toast');
+    document.getElementById('error-toast-msg').textContent = msg;
+    toast.style.display = 'block';
+    setTimeout(() => { toast.style.display = 'none'; }, 5000);
+}
+
+function getFileIcon(filename) {
+    const ext = filename.split('.').pop().toLowerCase();
+    if (ext === 'pdf') return 'pdf text-danger';
+    if (['png', 'jpg', 'jpeg'].includes(ext)) return 'image text-info';
+    if (['xlsx', 'xls'].includes(ext)) return 'excel text-success';
+    return 'alt text-secondary';
+}
+
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+/* ============================================================
+   STEPPER
+============================================================ */
+function goToStep(n) {
+    document.querySelectorAll('.section-step').forEach(s => s.classList.remove('active'));
+    document.getElementById('section-step' + n).classList.add('active');
+
+    for (let i = 1; i <= 3; i++) {
+        const stepEl = document.getElementById('step' + i);
+        stepEl.classList.remove('active', 'done');
+        if (i < n)  stepEl.classList.add('done');
+        if (i === n) stepEl.classList.add('active');
+    }
+    for (let i = 1; i <= 2; i++) {
+        document.getElementById('line' + i).classList.toggle('done', i < n);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ============================================================
+   ÉTAPE 1 — Sélection du document
+============================================================ */
+const docCards = document.querySelectorAll('.doc-card');
+
+docCards.forEach(card => {
+    card.addEventListener('click', () => {
+        docCards.forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        selectedDocType = card.dataset.value;
+        document.getElementById('selected-doc-name').textContent = DOC_LABELS[selectedDocType];
+        document.getElementById('selection-recap').style.display = 'block';
+        document.getElementById('alert-no-selection').style.display = 'none';
+    });
+});
+
+document.getElementById('btn-next-step1').addEventListener('click', () => {
+    if (!selectedDocType) {
+        document.getElementById('alert-no-selection').style.display = 'block';
+        return;
+    }
+    document.getElementById('recap-doc-step2').textContent = DOC_LABELS[selectedDocType];
+    goToStep(2);
+});
+
+/* ============================================================
+   ÉTAPE 2 — Upload & Traitement
+============================================================ */
+const dropArea       = document.getElementById('drop-area');
+const fileInput      = document.getElementById('file-input');
+const fileList       = document.getElementById('file-list');
+const processBtn     = document.getElementById('process-btn');
+const loadingSpinner = document.getElementById('loading-spinner');
+
+document.getElementById('btn-back-step2').addEventListener('click', () => goToStep(1));
+
+['dragenter','dragover','dragleave','drop'].forEach(ev =>
+    dropArea.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); })
+);
+['dragenter','dragover'].forEach(ev =>
+    dropArea.addEventListener(ev, () => dropArea.classList.add('dragover'))
+);
+['dragleave','drop'].forEach(ev =>
+    dropArea.addEventListener(ev, () => dropArea.classList.remove('dragover'))
+);
+dropArea.addEventListener('drop', e => handleFiles(e.dataTransfer.files));
+dropArea.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => { handleFiles(fileInput.files); fileInput.value = ''; });
+
+function handleFiles(newFiles) {
+    files = [...files, ...Array.from(newFiles)];
+    renderFileList();
+}
+
+function renderFileList() {
+    fileList.innerHTML = '';
+    processBtn.disabled = files.length === 0;
+
+    files.forEach((file, index) => {
+        const item = document.createElement('div');
+        item.className = 'file-item';
+        item.innerHTML = `
+            <div>
+                <i class="fas fa-file-${getFileIcon(file.name)} me-2"></i>
+                <strong>${file.name}</strong>
+                <span class="text-muted ms-2 small">(${formatFileSize(file.size)})</span>
+            </div>
+            <span class="remove-file" data-index="${index}" title="Supprimer">
+                <i class="fas fa-times-circle fa-lg"></i>
+            </span>
+        `;
+        fileList.appendChild(item);
+    });
+
+    document.querySelectorAll('.remove-file').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const idx = parseInt(btn.dataset.index);
+            files.splice(idx, 1);
+            renderFileList();
+        });
+    });
+}
+
+/* Bouton "Traiter les documents" */
+processBtn.addEventListener('click', async () => {
+    if (files.length === 0) return;
+
+    processBtn.disabled = true;
+    loadingSpinner.style.display = 'block';
+    dropArea.style.pointerEvents = 'none';
+
+    const formData = new FormData();
+    files.forEach(f => formData.append('files', f));
+
+    try {
+        const response = await fetch('/upload', {
+            method: 'POST',
+            body: formData
+        });
+        const result = await response.json();
+
+        if (!response.ok || result.error) {
+            throw new Error(result.error || 'Erreur serveur');
+        }
+
+        extractedData = result.data;
+        populateResults(extractedData);
+
+        document.getElementById('recap-doc-step3').textContent = DOC_LABELS[selectedDocType];
+        goToStep(3);
+
+    } catch (err) {
+        showError('Erreur : ' + err.message);
+        processBtn.disabled = false;
+    } finally {
+        loadingSpinner.style.display = 'none';
+        dropArea.style.pointerEvents = 'auto';
+    }
+});
+
+/* ============================================================
+   ÉTAPE 3 — Affichage des résultats + Choix format
+============================================================ */
+function populateResults(data) {
+    const fields = ['raison_sociale', 'ice', 'rc', 'if_val', 'activite',
+                    'forme_juridique', 'capital', 'adresse', 'exercice', 'secteur'];
+    fields.forEach(f => {
+        const el = document.getElementById(f);
+        if (el) el.textContent = data[f] || '—';
+    });
+
+    const dirigeants = data.dirigeants_str || (Array.isArray(data.dirigeants) ? data.dirigeants.join(', ') : data.dirigeants) || '—';
+    const banques    = data.banques_str    || (Array.isArray(data.banques)    ? data.banques.join(', ')    : data.banques)    || '—';
+    document.getElementById('dirigeants').textContent = dirigeants;
+    document.getElementById('banques').textContent    = banques;
+
+    document.getElementById('resume').textContent = data.resume || '—';
+}
+
+document.getElementById('btn-back-step3').addEventListener('click', () => goToStep(2));
+
+/* ═══ Gestion du choix de format ═══ */
+const formatCards = document.querySelectorAll('.format-card');
+
+formatCards.forEach(card => {
+    card.addEventListener('click', () => {
+        formatCards.forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        selectedFormat = card.dataset.format;
+        document.getElementById('alert-no-format').style.display = 'none';
+    });
+});
+
+/* ============================================================
+   GÉNÉRATION DU DOCUMENT
+============================================================ */
+document.getElementById('generate-doc-btn').addEventListener('click', async () => {
+    if (!extractedData || !selectedDocType) return;
+
+    // Vérifier qu'un format est sélectionné
+    if (!selectedFormat) {
+        document.getElementById('alert-no-format').style.display = 'block';
+        return;
+    }
+
+    const btn = document.getElementById('generate-doc-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Génération en cours...';
+
+    try {
+        // URL dynamique avec le format
+        const response = await fetch(`/generate/${selectedDocType}/${selectedFormat}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(extractedData)
+        });
+        const result = await response.json();
+
+        if (!response.ok || result.error) {
+            throw new Error(result.error || 'Erreur lors de la génération');
+        }
+
+        // Message de succès avec le format
+        document.getElementById('download-message').textContent =
+            `"${DOC_LABELS[selectedDocType]}" a été généré avec succès !`;
+        document.getElementById('download-format-info').textContent =
+            `Format : ${FORMAT_LABELS[selectedFormat]} | Fichier : ${result.filename}`;
+        document.getElementById('download-link').href = `/download/${result.filename}`;
+        document.getElementById('download-link').setAttribute('download', result.filename);
+
+        const modal = new bootstrap.Modal(document.getElementById('downloadModal'));
+        modal.show();
+
+    } catch (err) {
+        showError('Erreur génération : ' + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-magic me-2"></i>Générer &amp; Télécharger';
+    }
+});
+
+</script>
+</body>
+</html>
