@@ -1,7 +1,3 @@
-"""
-Test isolé de langchain_rag.py
-Placez ce fichier dans app/utils/ ou à la racine
-"""
 import os
 import sys
 

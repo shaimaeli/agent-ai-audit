@@ -1,5 +1,3 @@
-"""Questions hardcodées pour le fallback Word/Excel (quand pas de template PDF)"""
-
 def _get_inventaire_questions():
     return {
         "q1_1_instructions_ecrites": "Existe-t-il des instructions écrites ?",
@@ -98,7 +96,7 @@ def _get_fin_questions():
     }
 
 def _get_verification_questions():
-    return {}  # À compléter selon besoin
+    return {}  
 
 def _get_pri_questions():
-    return {}  # À compléter selon besoin
+    return {}  

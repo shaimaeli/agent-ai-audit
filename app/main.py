@@ -15,7 +15,7 @@ from app.utils.document_generator import (
     generate_questionnaire_evenement,
     generate_questionnaire_fin,
 )
-from app.utils.pdf_converter import pdf_to_word, pdf_to_excel
+from app.utils.pdf_converter import pdf_to_word
 app = Flask(__name__, template_folder="templates")
 app.config["SECRET_KEY"] = SECRET_KEY
 app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH

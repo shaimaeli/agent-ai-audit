@@ -25,14 +25,11 @@ ALL_VALID_TYPES = QUESTIONNAIRE_TYPES | STANDARD_TYPES
 
 
 def find_template_pdf(doc_type: str) -> str | None:
-    """Cherche un template PDF dans docs_stage/ selon le type de document."""
     if not os.path.exists(DOCS_STAGE_FOLDER):
-        print(f"❌ DOCS_STAGE_FOLDER inexistant : {DOCS_STAGE_FOLDER}")
         return None
     
     files = [f for f in os.listdir(DOCS_STAGE_FOLDER) if f.lower().endswith(".pdf")]
     if not files:
-        print("⚠️ Aucun PDF dans docs_stage/")
         return None
 
     patterns = TEMPLATE_PATTERNS.get(doc_type, [doc_type])
@@ -43,10 +40,5 @@ def find_template_pdf(doc_type: str) -> str | None:
             p_norm = p.lower().replace(" ", "_").replace("-", "_").replace("'", "_")
             if p_norm in fn:
                 full_path = os.path.join(DOCS_STAGE_FOLDER, fname)
-                print(f"✅ Match template : '{doc_type}' → '{fname}'")
                 return full_path
-
-    print(f"❌ Aucun template PDF trouvé pour '{doc_type}'")
-    print(f"   Patterns cherchés : {patterns}")
-    print(f"   Fichiers disponibles : {files}")
     return None

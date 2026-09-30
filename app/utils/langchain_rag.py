@@ -1,4 +1,3 @@
-# app/utils/langchain_rag.py
 import os
 import time
 import threading
@@ -18,7 +17,6 @@ except ModuleNotFoundError:
     sys.path.insert(0, parent)
     from config import GROQ_API_KEY, MODEL_GPT, BASE_DIR
 
-# ── Chemins ───────────────────────────────────────────────────────────────────
 DOCS_STAGE_FOLDER = os.path.join(BASE_DIR, "docs_stage")
 CHROMA_DB_PATH    = os.path.join(BASE_DIR, "chroma_db")
 MODEL_PATH        = os.path.join(BASE_DIR, "models", "paraphrase-multilingual-MiniLM-L12-v2")
@@ -26,7 +24,6 @@ MODEL_PATH        = os.path.join(BASE_DIR, "models", "paraphrase-multilingual-Mi
 os.makedirs(CHROMA_DB_PATH, exist_ok=True)
 os.makedirs(DOCS_STAGE_FOLDER, exist_ok=True)
 
-# ── Modèles ───────────────────────────────────────────────────────────────────
 client = Groq(api_key=GROQ_API_KEY)
 
 embeddings = HuggingFaceEmbeddings(
@@ -35,13 +32,11 @@ embeddings = HuggingFaceEmbeddings(
     encode_kwargs={'normalize_embeddings': True}
 )
 
-# ── Rate limiter pour RAG ───────────────────────────────────────────────────
 _rag_lock = threading.Lock()
 _rag_last_call = 0
 RAG_MIN_DELAY = 2.5
 
 def _rag_groq_call(prompt, max_tokens=4000):
-    """Wrapper avec rate limiting pour le RAG."""
     global _rag_last_call
     
     with _rag_lock:
@@ -66,8 +61,6 @@ def _rag_groq_call(prompt, max_tokens=4000):
             _rag_last_call = time.time()
             return ""
 
-# ── Mapping mots-clés → type de document ──────────────────────────────────────
-# [SEULEMENT les 8 types que tu as dans docs_stage]
 DOC_TYPE_MAP = {
     "fiche signaletique":       "fiche_signaletique",
     "fiche signalitique":       "fiche_signaletique",
@@ -112,12 +105,12 @@ def _get_vectorstore(doc_type: str) -> Chroma:
 
 def index_all_docs() -> Dict:
     if not os.path.exists(DOCS_STAGE_FOLDER):
-        print(f"⚠️ Dossier introuvable : {DOCS_STAGE_FOLDER}")
+        print(f" Dossier introuvable : {DOCS_STAGE_FOLDER}")
         return {}
 
     files = [f for f in os.listdir(DOCS_STAGE_FOLDER) if f.lower().endswith(".pdf")]
     if not files:
-        print("⚠️ Aucun PDF dans docs_stage/")
+        print("Aucun PDF dans docs_stage/")
         return {}
 
     splitter = RecursiveCharacterTextSplitter(
@@ -131,22 +124,22 @@ def index_all_docs() -> Dict:
     for filename in files:
         filepath = os.path.join(DOCS_STAGE_FOLDER, filename)
         doc_type = _detect_doc_type(filename)
-        print(f"\n📄 '{filename}' → type : '{doc_type}'")
+        print(f"'{filename}' → type : '{doc_type}'")
 
         try:
             loader    = PyPDFLoader(filepath)
             documents = loader.load()
         except Exception as e:
-            print(f"  ❌ Erreur chargement : {e}")
+            print(f"Erreur chargement : {e}")
             continue
 
         if not documents:
-            print(f"  ⚠️ PDF vide ou illisible")
+            print(f"PDF vide ou illisible")
             continue
 
         total_text = "".join([doc.page_content for doc in documents])
         if len(total_text.strip()) < 50:
-            print(f"  ⚠️ Texte trop court ({len(total_text)} caractères)")
+            print(f"Texte trop court")
             continue
 
         for doc in documents:
@@ -154,7 +147,7 @@ def index_all_docs() -> Dict:
             doc.metadata["doc_type"] = doc_type
 
         chunks = splitter.split_documents(documents)
-        print(f"  ✂️  {len(chunks)} chunks créés")
+        print(f"{len(chunks)} chunks créés")
 
         try:
             vectorstore = _get_vectorstore(doc_type)
@@ -163,29 +156,24 @@ def index_all_docs() -> Dict:
                 if existing > 0:
                     results = vectorstore._collection.get(where={"source": filename})
                     if results and results.get("ids") and len(results["ids"]) > 0:
-                        print(f"  ⚠️ Déjà indexé — ignoré")
                         continue
             except Exception:
                 pass
 
             vectorstore.add_documents(chunks)
             indexed[filename] = {"doc_type": doc_type, "chunks": len(chunks)}
-            print(f"  ✅ Indexé avec succès")
 
         except Exception as e:
-            print(f"  ❌ Erreur indexation : {e}")
             continue
 
-    print(f"\n📚 Résumé : {len(indexed)} fichier(s) indexé(s)")
     for fname, info in indexed.items():
-        print(f"  • {fname} → {info['doc_type']} ({info['chunks']} chunks)")
+        print(f"  {fname} → {info['doc_type']} ({info['chunks']} chunks)")
 
     return indexed
 
 
 def list_indexed_docs() -> Dict:
     result = {}
-    # SEULEMENT les 8 types valides
     all_types = [
         "fiche_signaletique",
         "acceptation_mission",
@@ -210,17 +198,14 @@ def list_indexed_docs() -> Dict:
     return result
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  PROMPTS — SEULEMENT les 8 documents
-# ─────────────────────────────────────────────────────────────────────────────
 PROMPTS = {
 
     "fiche_signaletique": """Tu es un commissaire aux comptes au Maroc.
 
 Voici le document MODÈLE exact (fiche signalétique réelle) issu de ta base documentaire :
-========== DÉBUT DU MODÈLE ==========
+ DÉBUT DU MODÈLE 
 {context}
-========== FIN DU MODÈLE ==========
+ FIN DU MODÈLE 
 
 Ta mission : reproduire EXACTEMENT la même structure que ce modèle (mêmes titres, mêmes rubriques, même ordre, même mise en page), mais en remplaçant toutes les valeurs par celles de l'entreprise suivante :
 
@@ -236,9 +221,9 @@ Règles STRICTES :
     "acceptation_mission": """Tu es un commissaire aux comptes au Maroc.
 
 Voici le document MODÈLE exact (acceptation de mission réelle) :
-========== DÉBUT DU MODÈLE ==========
+ DÉBUT DU MODÈLE 
 {context}
-========== FIN DU MODÈLE ==========
+ FIN DU MODÈLE 
 
 Ta mission : reproduire EXACTEMENT la même structure (même en-tête, mêmes clauses, même ordre, mêmes formules), en remplaçant uniquement les informations spécifiques par celles de l'entreprise :
 
@@ -253,9 +238,9 @@ Règles STRICTES :
     "maintien_mission": """Tu es un commissaire aux comptes au Maroc.
 
 Voici le document MODÈLE exact (maintien de mission réelle) :
-========== DÉBUT DU MODÈLE ==========
+ DÉBUT DU MODÈLE 
 {context}
-========== FIN DU MODÈLE ==========
+ FIN DU MODÈLE 
 
 Ta mission : reproduire EXACTEMENT la même structure (même en-tête, mêmes clauses, même ordre, mêmes formules), en remplaçant uniquement les informations spécifiques par celles de l'entreprise :
 
@@ -270,9 +255,9 @@ Règles STRICTES :
     "questionnaire_pri": """Tu es un auditeur senior au Maroc.
 
 Voici le document MODÈLE exact (questionnaire prise de connaissance réel) :
-========== DÉBUT DU MODÈLE ==========
+ DÉBUT DU MODÈLE 
 {context}
-========== FIN DU MODÈLE ==========
+ FIN DU MODÈLE 
 
 Ta mission : reproduire EXACTEMENT la même structure, en adaptant l'en-tête à l'entreprise :
 
@@ -285,9 +270,9 @@ Règles STRICTES :
     "questionnaire_inventaire": """Tu es un auditeur senior au Maroc.
 
 Voici le document MODÈLE exact (questionnaire inventaire physique réel) :
-========== DÉBUT DU MODÈLE ==========
+ DÉBUT DU MODÈLE 
 {context}
-========== FIN DU MODÈLE ==========
+ FIN DU MODÈLE 
 
 Ta mission : reproduire EXACTEMENT la même structure, en adaptant l'en-tête à l'entreprise :
 
@@ -300,9 +285,9 @@ Règles STRICTES :
     "questionnaire_verification": """Tu es un auditeur senior au Maroc.
 
 Voici le document MODÈLE exact (questionnaire vérification spécifique réel) :
-========== DÉBUT DU MODÈLE ==========
+ DÉBUT DU MODÈLE 
 {context}
-========== FIN DU MODÈLE ==========
+ FIN DU MODÈLE 
 
 Ta mission : reproduire EXACTEMENT la même structure, en adaptant l'en-tête à l'entreprise :
 
@@ -315,9 +300,9 @@ Règles STRICTES :
     "questionnaire_evenement": """Tu es un auditeur senior au Maroc.
 
 Voici le document MODÈLE exact (questionnaire événements post-clôture réel) :
-========== DÉBUT DU MODÈLE ==========
+ DÉBUT DU MODÈLE 
 {context}
-========== FIN DU MODÈLE ==========
+ FIN DU MODÈLE 
 
 Ta mission : reproduire EXACTEMENT la même structure, en adaptant l'en-tête à l'entreprise :
 
@@ -330,9 +315,9 @@ Règles STRICTES :
     "questionnaire_fin": """Tu es un auditeur senior au Maroc.
 
 Voici le document MODÈLE exact (questionnaire fin de mission réel) :
-========== DÉBUT DU MODÈLE ==========
+ DÉBUT DU MODÈLE 
 {context}
-========== FIN DU MODÈLE ==========
+ FIN DU MODÈLE 
 
 Ta mission : reproduire EXACTEMENT la même structure, en adaptant l'en-tête à l'entreprise :
 
@@ -346,9 +331,9 @@ Règles STRICTES :
 DEFAULT_PROMPT = """Tu es un expert-comptable et commissaire aux comptes au Maroc.
 
 Voici le document MODÈLE exact issu de ta base documentaire :
-========== DÉBUT DU MODÈLE ==========
+ DÉBUT DU MODÈLE 
 {context}
-========== FIN DU MODÈLE ==========
+ FIN DU MODÈLE 
 
 Ta mission : reproduire EXACTEMENT la même structure que ce modèle, en remplaçant toutes les valeurs par celles de l'entreprise suivante :
 
@@ -383,7 +368,6 @@ def _retrieve_full_context(doc_type: str, entreprise_info: str) -> str:
     count = vectorstore._collection.count()
 
     if count == 0:
-        print(f"⚠️ Aucun document modèle indexé pour '{doc_type}'")
         return ""
 
     k    = min(20, count)
@@ -398,7 +382,6 @@ def _retrieve_full_context(doc_type: str, entreprise_info: str) -> str:
     )
 
     context = "\n\n".join([d.page_content for d in docs_sorted])
-    print(f"✅ RAG '{doc_type}' : {len(docs_sorted)} chunks récupérés")
     return context
 
 
@@ -407,8 +390,7 @@ def generate_with_rag(doc_type: str, data: Dict) -> str:
     context         = _retrieve_full_context(doc_type, entreprise_info)
 
     if not context:
-        print(f"⚠️ Aucun modèle disponible pour '{doc_type}'")
-        context = "Aucun document modèle disponible. Génère un document professionnel standard marocain."
+        context = "Aucun document modèle disponible."
 
     template = PROMPTS.get(doc_type, DEFAULT_PROMPT)
     prompt_text = template.format(
@@ -416,11 +398,9 @@ def generate_with_rag(doc_type: str, data: Dict) -> str:
         entreprise_info=entreprise_info
     )
 
-    # ── UTILISE LE RATE LIMITER ──
     result = _rag_groq_call(prompt_text, max_tokens=4000)
     
     if not result:
         return ""
     
-    print(f"✅ Généré : {len(result)} caractères")
     return result.strip()

@@ -1,6 +1,6 @@
 import fitz
 
-pdf_path = r"C:\Users\HP\Desktop\agent_ai\docs_stage\questionnaire fin de mission.pdf"  # ajustez le nom
+pdf_path = r"C:\Users\HP\Desktop\agent_ai\docs_stage\questionnaire fin de mission.pdf"  
 doc = fitz.open(pdf_path)
 
 for pn, page in enumerate(doc):

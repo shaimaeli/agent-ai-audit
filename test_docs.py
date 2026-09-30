@@ -13,7 +13,6 @@ _ai_last_call = 0
 MIN_DELAY = 2.5
 
 def _groq_call(prompt: str, max_tokens: int = 2500) -> str:
-    """Appel Groq avec rate limiting global."""
     global _ai_last_call
     
     with _ai_lock:
@@ -36,12 +35,6 @@ def _groq_call(prompt: str, max_tokens: int = 2500) -> str:
             return ""
 
 def analyze_all(data: Dict) -> Tuple[List[str], List[str], str]:
-    """
-    UN SEUL appel Groq qui retourne :
-    - risques
-    - commentaires  
-    - résumé
-    """
     prompt = f"""Tu es un expert en audit et commissariat aux comptes au Maroc.
 
 Analyse les données suivantes et retourne UNIQUEMENT un JSON avec cette structure exacte :
@@ -88,7 +81,7 @@ RÈGLES :
         return risques, commentaires, resume
         
     except Exception as e:
-        print(f"⚠️ Erreur parsing JSON: {e}")
+        print(f"Erreur parsing JSON: {e}")
         return [], [], ""
 
 _risques_cache = {}
