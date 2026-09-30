@@ -5,3 +5,11 @@ __pycache__/
 *.pyc
 uploads/
 outputs/
+chroma_db/
+database/
+docs_stage/
+models/
+.vscode/
+*.code-workspace
+diagnose_pdf.py
+app/test_rag.py
